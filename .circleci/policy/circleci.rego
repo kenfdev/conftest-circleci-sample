@@ -7,19 +7,14 @@ deny[msg] {
 
 deny[msg] {
   docker_images := input.jobs[_].docker[_].image
-  startswith(docker_images, "circleci/")
+  not startswith(docker_images, "circleci/")
   msg = "Only use official CircleCI images"
 }
 
 deny[msg] {
-  images := input.jobs[_].docker[_].image
-  tag_is_latest(split(images, ":"))
+  docker_images := input.jobs[_].docker[_].image
+  tag_is_latest(split(docker_images, ":"))
   msg = "Do not use `latest` container image tags"
-}
-
-deny[msg] {
-  count(input.workflows) > 0
-  msg = "Do not use workflows"
 }
 
 # helpers
