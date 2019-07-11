@@ -1,5 +1,32 @@
 version: 2.0
 jobs:
+  check_ci:
+    docker:
+      - image: circleci/buildpack-deps
+    steps:
+      - checkout
+      - run:
+          name: Setup Environment Variables and Version file
+          command: |
+            echo 'export CONFTEST_VERSION="0.8.1"' >> $BASH_ENV
+            echo "${CONFTEST_VERSION}" > _conftest_version_
+      - restore_cache:
+          keys:
+            - conftest-cache-{{ checksum "_conftest_version_" }}
+      - run:
+          name: Download conftest
+          command: |
+            if [ ! -f .bin/conftest ]; then
+              mkdir .bin
+              wget -c https://github.com/instrumenta/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz -O - | tar -xz -C .bin
+            fi
+      - run:
+          name: Test Policies
+          command: (cd .circleci && ../.bin/conftest test config.yml)
+      - save_cache:
+          key: conftest-cache-{{ checksum "_conftest_version_" }}
+          paths:
+            - .bin
   build:
     docker:
       - image: circleci/buildpack-deps
@@ -14,5 +41,10 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - build
-      - test
+      - check_ci
+      - build:
+          requires:
+            - check_ci
+      - test:
+          requires:
+            - build
